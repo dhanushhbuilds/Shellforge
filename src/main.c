@@ -7,26 +7,14 @@
 #include <sys/wait.h>
 
 int main(void) {
-
-    // Declares a pointer to the input line
     char *line = NULL;
-
-    // Stores the allocated size of the input buffer
     size_t len = 0;
-
-    // Array of pointers to command arguments
     char *args[64];
 
     while (1) {
-
-        // Display prompt
         printf("shellforge$ ");
-
-        // Prevent output buffering
         fflush(stdout);
 
-        // Read user input
-        // Ctrl+D causes getline() to return -1
         if (getline(&line, &len, stdin) == -1) {
             break;
         }
@@ -36,19 +24,18 @@ int main(void) {
 
         int i = 0;
 
-        // Split input into tokens using space/tab
+        // Split input into tokens
         char *token = strtok(line, " \t");
 
-        // Store tokens in args[]
         while (token != NULL && i < 63) {
             args[i++] = token;
             token = strtok(NULL, " \t");
         }
 
-        // Argument list must end with NULL
+        // NULL-terminate argument list
         args[i] = NULL;
 
-        // Ignore empty input
+        // Skip empty input
         if (i == 0) {
             continue;
         }
@@ -58,35 +45,45 @@ int main(void) {
             break;
         }
 
-        // --- FORK CHILD GENERATION ENGINE ---
+        // --- WEEK 5: BUILT-IN cd COMMAND ---
+        if (strcmp(args[0], "cd") == 0) {
+
+            if (args[1] == NULL) {
+                fprintf(stderr, "shellforge: missing path parameter\n");
+            } else {
+                if (chdir(args[1]) != 0) {
+                    perror("shellforge: cd");
+                }
+            }
+
+            // Do not fork for cd
+            continue;
+        }
+
+        // --- EXTERNAL COMMAND EXECUTION ---
         pid_t pid = fork();
 
         if (pid == 0) {
 
             // Child process
-
             execvp(args[0], args);
 
             // Only reached if execvp() fails
-            perror("Command execution error");
+            perror("shellforge: execution error");
             exit(EXIT_FAILURE);
-        }
 
-        else if (pid > 0) {
+        } else if (pid > 0) {
 
             // Parent process
-            // Wait for child to finish
             waitpid(pid, NULL, 0);
-        }
 
-        else {
+        } else {
 
             // fork() failed
-            perror("Fork creation error");
+            perror("shellforge: fork");
         }
     }
 
-    // Free getline() allocated memory
     free(line);
 
     return 0;
