@@ -3,65 +3,90 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
+#include <unistd.h>
+#include <sys/wait.h>
 
 int main(void) {
+
+    // Declares a pointer to the input line
     char *line = NULL;
+
+    // Stores the allocated size of the input buffer
     size_t len = 0;
-    ssize_t nread;
+
+    // Array of pointers to command arguments
     char *args[64];
 
     while (1) {
+
+        // Display prompt
         printf("shellforge$ ");
+
+        // Prevent output buffering
         fflush(stdout);
 
-        nread = getline(&line, &len, stdin);
-
-        if (nread == -1) {
+        // Read user input
+        // Ctrl+D causes getline() to return -1
+        if (getline(&line, &len, stdin) == -1) {
             break;
         }
 
-        if (nread > 0 && line[nread - 1] == '\n') {
-            line[nread - 1] = '\0';
-        }
+        // Remove trailing newline
+        line[strcspn(line, "\n")] = '\0';
 
-        // --- WEEK 2 STRING SLICER ENGINE ---
         int i = 0;
 
+        // Split input into tokens using space/tab
         char *token = strtok(line, " \t");
 
+        // Store tokens in args[]
         while (token != NULL && i < 63) {
-            args[i] = token;
-            i++;
-
+            args[i++] = token;
             token = strtok(NULL, " \t");
         }
 
-        // Strict rule: List must end with NULL
+        // Argument list must end with NULL
         args[i] = NULL;
 
-        // Skip empty inputs
+        // Ignore empty input
         if (i == 0) {
             continue;
         }
 
-        // Exit command
+        // Exit shell
         if (strcmp(args[0], "exit") == 0) {
             break;
         }
 
-        // Print extracted pieces
-        printf(
-            "Command detected: %s (Total args: %d)\n",
-            args[0],
-            i - 1
-        );
+        // --- FORK CHILD GENERATION ENGINE ---
+        pid_t pid = fork();
 
-        for (int j = 0; j < i; j++) {
-            printf(" -> args[%d]: %s\n", j, args[j]);
+        if (pid == 0) {
+
+            // Child process
+
+            execvp(args[0], args);
+
+            // Only reached if execvp() fails
+            perror("Command execution error");
+            exit(EXIT_FAILURE);
+        }
+
+        else if (pid > 0) {
+
+            // Parent process
+            // Wait for child to finish
+            waitpid(pid, NULL, 0);
+        }
+
+        else {
+
+            // fork() failed
+            perror("Fork creation error");
         }
     }
 
+    // Free getline() allocated memory
     free(line);
 
     return 0;
