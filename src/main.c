@@ -33,20 +33,29 @@ int main(void) {
         while (token != NULL && i < 63) {
             args[i] = token;
             i++;
+
             token = strtok(NULL, " \t");
         }
 
+        // Strict rule: List must end with NULL
         args[i] = NULL;
 
+        // Skip empty inputs
         if (i == 0) {
             continue;
         }
 
+        // Exit command
         if (strcmp(args[0], "exit") == 0) {
             break;
         }
 
-        printf("Command detected: %s (Total args: %d)\n", args[0], i - 1);
+        // Print extracted pieces
+        printf(
+            "Command detected: %s (Total args: %d)\n",
+            args[0],
+            i - 1
+        );
 
         for (int j = 0; j < i; j++) {
             printf(" -> args[%d]: %s\n", j, args[j]);
